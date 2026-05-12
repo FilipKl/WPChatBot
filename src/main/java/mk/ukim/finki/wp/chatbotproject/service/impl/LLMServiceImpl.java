@@ -7,6 +7,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Implementation of LLMService using Spring AI with Ollama.
@@ -31,6 +32,27 @@ public class LLMServiceImpl implements LLMService {
                 .user(conversationContext)
                 .call()
                 .content();
+    }
+
+    @Override
+    public String generateResponseStream(List<Message> messages, Consumer<String> onChunk) {
+        // Build the conversation context from message history
+        String conversationContext = buildConversationContext(messages);
+
+        // Generate response with streaming using ChatClient
+        StringBuilder fullResponse = new StringBuilder();
+
+        chatClient.prompt()
+                .user(conversationContext)
+                .stream()
+                .content()
+                .doOnNext(chunk -> {
+                    fullResponse.append(chunk);
+                    onChunk.accept(chunk);
+                })
+                .blockLast();
+
+        return fullResponse.toString();
     }
 
     /**
@@ -58,6 +80,3 @@ public class LLMServiceImpl implements LLMService {
         return contextBuilder.toString();
     }
 }
-
-
-

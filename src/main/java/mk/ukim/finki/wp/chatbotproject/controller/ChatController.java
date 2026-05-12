@@ -47,12 +47,12 @@ public class ChatController {
      * Form parameter: title
      *
      * @param title the title of the new chat
-     * @return redirect to home page
+     * @return redirect to the newly created chat
      */
     @PostMapping("/chat/create")
     public String createChat(@RequestParam String title) {
-        chatService.createChat(title);
-        return "redirect:/";
+        Chat newChat = chatService.createChat(title);
+        return "redirect:/chat/" + newChat.getId();
     }
 
     /**
