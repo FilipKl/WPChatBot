@@ -553,6 +553,8 @@
 
             if (lastMessage) {
                 const newContent = lastMessage.querySelector('.message-content').textContent;
+                const msgId = lastMessage.id.replace('message-', '');
+
                 // Update the AI message with word-by-word typing effect
                 const contentDiv = aiMessageDiv.querySelector('.message-content');
                 contentDiv.innerHTML = '';
@@ -560,12 +562,31 @@
                 // Display response word by word
                 await typeWordByWord(contentDiv, newContent);
 
-                // Add edit button
+                // Add edit form and button
                 const messageBubble = aiMessageDiv.querySelector('.message-bubble');
+
+                // Create edit form
+                const editFormDiv = document.createElement('div');
+                editFormDiv.className = 'edit-form';
+                editFormDiv.innerHTML = `
+                    <form method="POST" action="/message/${msgId}/edit" style="display: contents;">
+                        <textarea name="newContent" required>${escapeHtml(newContent)}</textarea>
+                        <div class="edit-form-buttons">
+                            <button type="submit" class="btn-save">Save</button>
+                            <button type="button" class="btn-cancel" onclick="cancelEdit(this)">Cancel</button>
+                        </div>
+                    </form>
+                `;
+                messageBubble.appendChild(editFormDiv);
+
+                // Add edit button
                 const editButtonDiv = document.createElement('div');
                 editButtonDiv.className = 'message-actions';
                 editButtonDiv.innerHTML = '<button type="button" class="btn-edit" onclick="toggleEdit(this)">✏ edit</button>';
                 messageBubble.appendChild(editButtonDiv);
+
+                // Set message ID
+                aiMessageDiv.id = 'message-' + msgId;
             }
 
             btn.disabled = false;
