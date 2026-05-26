@@ -40,6 +40,15 @@ public class Chat {
     private LocalDateTime createdAt;
 
     /**
+     * Reference to the owner User.
+     * Many-to-one relationship with User entity.
+     * Nullable to support existing chats without assigned users (will be migrated).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    /**
      * Collection of messages in this chat.
      * One-to-many relationship with Message entity.
      */

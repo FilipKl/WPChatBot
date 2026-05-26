@@ -68,5 +68,12 @@ public class MessageServiceImpl implements MessageService {
         return messageRepository.findById(messageId)
                 .orElseThrow(() -> new IllegalArgumentException("Message not found with ID: " + messageId));
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Message getLastAIMessageByChat(Long chatId) {
+        return messageRepository.findLastMessageByChat(chatId, Role.AI)
+                .orElseThrow(() -> new IllegalArgumentException("No AI message found for chat ID: " + chatId));
+    }
 }
 

@@ -49,5 +49,14 @@ public interface MessageService {
      * @throws jakarta.persistence.EntityNotFoundException if not found
      */
     Message getMessageById(Long messageId);
+
+    /**
+     * Get the last AI message for a given chat.
+     *
+     * @param chatId the ID of the chat
+     * @return the most recent AI message
+     * @throws IllegalArgumentException if no AI message found
+     */
+    Message getLastAIMessageByChat(Long chatId);
 }
 

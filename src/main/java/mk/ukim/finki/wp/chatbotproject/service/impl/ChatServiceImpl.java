@@ -3,6 +3,7 @@ package mk.ukim.finki.wp.chatbotproject.service.impl;
 import mk.ukim.finki.wp.chatbotproject.models.Chat;
 import mk.ukim.finki.wp.chatbotproject.models.Message;
 import mk.ukim.finki.wp.chatbotproject.models.Role;
+import mk.ukim.finki.wp.chatbotproject.models.User;
 import mk.ukim.finki.wp.chatbotproject.repository.ChatRepository;
 import mk.ukim.finki.wp.chatbotproject.service.ChatService;
 import mk.ukim.finki.wp.chatbotproject.service.LLMService;
@@ -17,7 +18,6 @@ import java.util.List;
  * Orchestrates the conversation flow between user and AI.
  */
 @Service
-@Transactional
 public class ChatServiceImpl implements ChatService {
 
     private final ChatRepository chatRepository;
@@ -31,50 +31,59 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public Chat createChat(String title) {
+    @Transactional
+    public Chat createChat(String title, User user) {
         Chat chat = new Chat();
         chat.setTitle(title);
+        chat.setUser(user);
 
         return chatRepository.save(chat);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Chat getChatById(Long id) {
-        return chatRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Chat not found with ID: " + id));
+    public Chat getChatById(Long id, User user) {
+        return chatRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new IllegalArgumentException("Chat not found with ID: " + id + " for user: " + user.getUsername()));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Chat> getAllChats() {
-        return chatRepository.findAll();
+    public List<Chat> getAllChats(User user) {
+        return chatRepository.findAllByUser(user);
     }
 
     @Override
-    public Chat sendMessage(Long chatId, String userInput) {
-        // Retrieve the chat
-        Chat chat = getChatById(chatId);
+    @Transactional
+    public Chat sendMessage(Long chatId, User user, String userInput) {
+        // Step 1: Fetch chat and save user message (in transaction)
+        Chat chat = saveChatUserMessage(chatId, user, userInput);
 
-        // Step 1: Save the USER message
-        messageService.saveMessage(chat, Role.USER, userInput);
+        // Step 2: Generate AI response
+        String aiResponse = llmService.generateResponse(messageService.getMessagesByChat(chatId));
 
-        // Step 2: Retrieve all messages for context (including the newly saved user message)
-        List<Message> conversationHistory = messageService.getMessagesByChat(chatId);
-
-        // Step 3: Generate AI response using full conversation history
-        String aiResponse = llmService.generateResponse(conversationHistory);
-
-        // Step 4: Save the AI response
+        // Step 3: Save AI response (in new transaction)
         messageService.saveMessage(chat, Role.AI, aiResponse);
 
         // Return the updated chat
-        return getChatById(chatId);
+        return getChatById(chatId, user);
+    }
+
+    /**
+     * Save user message in a transaction. Separated from sendMessage to avoid
+     * holding database connection during long LLM call.
+     */
+    @Transactional
+    private Chat saveChatUserMessage(Long chatId, User user, String userInput) {
+        Chat chat = getChatById(chatId, user);
+        messageService.saveMessage(chat, Role.USER, userInput);
+        return chat;
     }
 
     @Override
-    public void deleteChat(Long chatId) {
-        Chat chat = getChatById(chatId);
+    @Transactional
+    public void deleteChat(Long chatId, User user) {
+        Chat chat = getChatById(chatId, user);
         chatRepository.delete(chat);
     }
 }

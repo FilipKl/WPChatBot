@@ -469,24 +469,108 @@
     </div>
 </div>
 
+<!-- WebSocket and STOMP libraries -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 <script>
     // ── Scroll to bottom ──────────────────────────────────
     const container = document.getElementById('messagesContainer');
     container.scrollTop = container.scrollHeight;
 
-    // ── Typing indicator on send ──────────────────────────
-    const form  = document.getElementById('chatForm');
-    const input = document.getElementById('messageInput');
-    const btn   = document.getElementById('sendBtn');
+    // ── WebSocket and STOMP setup ───────────────────────
     const chatId = window.location.pathname.split('/').pop();
+    let stompClient = null;
+    let isConnected = false;
 
-    form.addEventListener('submit', async function (e) {
+    function connect() {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function(frame) {
+            console.log('WebSocket connected:', frame);
+            isConnected = true;
+
+            // Subscribe to chat messages
+            stompClient.subscribe('/topic/chat/' + chatId, function(message) {
+                const response = JSON.parse(message.body);
+                console.log('Received message:', response);
+                handleReceivedMessage(response);
+            });
+        }, function(error) {
+            console.error('WebSocket connection error:', error);
+            isConnected = false;
+        });
+    }
+
+    // Connect on page load
+    document.addEventListener('DOMContentLoaded', connect);
+
+    // ── Handle received messages ──────────────────────────
+    function handleReceivedMessage(message) {
+        const btn = document.getElementById('sendBtn');
+        const aiMessageDiv = document.getElementById('aiMessage');
+
+        if (!aiMessageDiv) return; // No AI message pending
+
+        if (message.role === 'AI') {
+            const contentDiv = aiMessageDiv.querySelector('.message-content');
+            contentDiv.innerHTML = '';
+
+            // Display response word by word
+            typeWordByWord(contentDiv, message.content).then(() => {
+                // Add edit form and button
+                const messageBubble = aiMessageDiv.querySelector('.message-bubble');
+
+                // Create edit form
+                const editFormDiv = document.createElement('div');
+                editFormDiv.className = 'edit-form';
+                editFormDiv.innerHTML = `
+                    <form method="POST" action="/message/${message.messageId}/edit" style="display: contents;">
+                        <textarea name="newContent" required>${escapeHtml(message.content)}</textarea>
+                        <div class="edit-form-buttons">
+                            <button type="submit" class="btn-save">Save</button>
+                            <button type="button" class="btn-cancel" onclick="cancelEdit(this)">Cancel</button>
+                        </div>
+                    </form>
+                `;
+                messageBubble.appendChild(editFormDiv);
+
+                // Add edit button
+                const editButtonDiv = document.createElement('div');
+                editButtonDiv.className = 'message-actions';
+                editButtonDiv.innerHTML = '<button type="button" class="btn-edit" onclick="toggleEdit(this)">✏ edit</button>';
+                messageBubble.appendChild(editButtonDiv);
+
+                // Set message ID
+                aiMessageDiv.id = 'message-' + message.messageId;
+
+                // Enable send button
+                btn.disabled = false;
+                btn.textContent = 'Send ↑';
+                container.scrollTop = container.scrollHeight;
+            });
+        } else if (message.content.startsWith('Error:')) {
+            // Handle error response
+            const contentDiv = aiMessageDiv.querySelector('.message-content');
+            contentDiv.textContent = message.content;
+            btn.disabled = false;
+            btn.textContent = 'Send ↑';
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    // ── Form submission with WebSocket ──────────────────
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('messageInput');
+
+    form.addEventListener('submit', function (e) {
         e.preventDefault();
 
         const userMessage = input.value;
         if (!userMessage.trim()) return;
 
         input.value = '';
+        const btn = document.getElementById('sendBtn');
         btn.disabled = true;
         btn.textContent = '…';
 
@@ -504,7 +588,7 @@
         `;
         container.appendChild(userMessageDiv);
 
-        // Add AI message bubble with three dots
+        // Add AI message bubble with three dots (typing indicator)
         const aiMessageDiv = document.createElement('div');
         aiMessageDiv.className = 'message ai';
         aiMessageDiv.id = 'aiMessage';
@@ -526,8 +610,23 @@
         container.appendChild(aiMessageDiv);
         container.scrollTop = container.scrollHeight;
 
+        // Send message via WebSocket
+        if (isConnected && stompClient) {
+            const message = {
+                chatId: chatId,
+                content: userMessage
+            };
+            stompClient.send('/app/chat/' + chatId + '/send', {}, JSON.stringify(message));
+        } else {
+            // Fallback to HTTP POST if WebSocket is not connected
+            console.warn('WebSocket not connected, falling back to HTTP POST');
+            sendMessageViaHTTP(userMessage, btn);
+        }
+    });
+
+    // ── Fallback HTTP POST for messages ─────────────────
+    async function sendMessageViaHTTP(userMessage, btn) {
         try {
-            // Send message to backend
             const response = await fetch('/chat/' + chatId + '/send', {
                 method: 'POST',
                 headers: {
@@ -540,12 +639,10 @@
                 throw new Error('Failed to send message');
             }
 
-            // Get updated messages from the page
             const redirectUrl = response.url;
             const redirectResponse = await fetch(redirectUrl);
             const html = await redirectResponse.text();
 
-            // Parse the response to find the last AI message
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             const messages = doc.querySelectorAll('.message.ai');
@@ -554,18 +651,13 @@
             if (lastMessage) {
                 const newContent = lastMessage.querySelector('.message-content').textContent;
                 const msgId = lastMessage.id.replace('message-', '');
-
-                // Update the AI message with word-by-word typing effect
+                const aiMessageDiv = document.getElementById('aiMessage');
                 const contentDiv = aiMessageDiv.querySelector('.message-content');
                 contentDiv.innerHTML = '';
 
-                // Display response word by word
                 await typeWordByWord(contentDiv, newContent);
 
-                // Add edit form and button
                 const messageBubble = aiMessageDiv.querySelector('.message-bubble');
-
-                // Create edit form
                 const editFormDiv = document.createElement('div');
                 editFormDiv.className = 'edit-form';
                 editFormDiv.innerHTML = `
@@ -579,27 +671,24 @@
                 `;
                 messageBubble.appendChild(editFormDiv);
 
-                // Add edit button
                 const editButtonDiv = document.createElement('div');
                 editButtonDiv.className = 'message-actions';
                 editButtonDiv.innerHTML = '<button type="button" class="btn-edit" onclick="toggleEdit(this)">✏ edit</button>';
                 messageBubble.appendChild(editButtonDiv);
 
-                // Set message ID
                 aiMessageDiv.id = 'message-' + msgId;
             }
 
             btn.disabled = false;
             btn.textContent = 'Send ↑';
             container.scrollTop = container.scrollHeight;
-
         } catch (error) {
             console.error('Error:', error);
             btn.disabled = false;
             btn.textContent = 'Send ↑';
             alert('Error sending message. Please try again.');
         }
-    });
+    }
 
     // ── Escape HTML to prevent XSS ──────────────────────
     function escapeHtml(unsafe) {

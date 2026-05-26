@@ -2,12 +2,16 @@ package mk.ukim.finki.wp.chatbotproject.controller;
 
 import mk.ukim.finki.wp.chatbotproject.models.Chat;
 import mk.ukim.finki.wp.chatbotproject.models.Message;
+import mk.ukim.finki.wp.chatbotproject.models.User;
 import mk.ukim.finki.wp.chatbotproject.service.ChatService;
 import mk.ukim.finki.wp.chatbotproject.service.MessageService;
+import mk.ukim.finki.wp.chatbotproject.service.impl.UserServiceImpl;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,44 +32,69 @@ public class ChatController {
     }
 
     /**
-     * List all chats.
+     * Extract authenticated user from the security context.
+     *
+     * @param authentication the Authentication object from Spring Security
+     * @return the User entity
+     */
+    private User getAuthenticatedUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalArgumentException("User is not authenticated");
+        }
+        UserServiceImpl.UserDetailsImpl userDetails = (UserServiceImpl.UserDetailsImpl) authentication.getPrincipal();
+        return userDetails.getUser();
+    }
+
+    /**
+     * List all chats for the authenticated user, or show empty list if not authenticated.
      * GET /
      *
      * @param model the model to pass data to the view
+     * @param authentication the authenticated user (may be null if not logged in)
      * @return the index view name
      */
     @GetMapping("/")
-    public String listAllChats(Model model) {
-        List<Chat> chats = chatService.getAllChats();
+    public String listAllChats(Model model, Authentication authentication) {
+        List<Chat> chats = new ArrayList<>();
+
+        if (authentication != null && authentication.isAuthenticated()) {
+            User user = getAuthenticatedUser(authentication);
+            chats = chatService.getAllChats(user);
+        }
+
         model.addAttribute("chats", chats);
         return "index";
     }
 
     /**
-     * Create a new chat.
+     * Create a new chat for the authenticated user.
      * POST /chat/create
      * Form parameter: title
      *
      * @param title the title of the new chat
+     * @param authentication the authenticated user
      * @return redirect to the newly created chat
      */
     @PostMapping("/chat/create")
-    public String createChat(@RequestParam String title) {
-        Chat newChat = chatService.createChat(title);
+    public String createChat(@RequestParam String title, Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        Chat newChat = chatService.createChat(title, user);
         return "redirect:/chat/" + newChat.getId();
     }
 
     /**
-     * Open a specific chat and display its messages.
+     * Open a specific chat and display its messages for the authenticated user.
      * GET /chat/{chatId}
      *
      * @param chatId the ID of the chat to open
      * @param model the model to pass data to the view
+     * @param authentication the authenticated user
      * @return the chat view name
      */
     @GetMapping("/chat/{chatId}")
-    public String openChat(@PathVariable Long chatId, Model model) {
-        Chat chat = chatService.getChatById(chatId);
+    public String openChat(@PathVariable Long chatId, Model model, Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        Chat chat = chatService.getChatById(chatId, user);
         List<Message> messages = messageService.getMessagesByChat(chatId);
 
         model.addAttribute("chat", chat);
@@ -75,7 +104,7 @@ public class ChatController {
     }
 
     /**
-     * Send a user message and trigger AI response generation.
+     * Send a user message and trigger AI response generation for the authenticated user.
      * POST /chat/{chatId}/send
      * Form parameter: content (the message content)
      *
@@ -86,16 +115,18 @@ public class ChatController {
      *
      * @param chatId the ID of the chat
      * @param content the message content from the user
+     * @param authentication the authenticated user
      * @return redirect to the chat page
      */
     @PostMapping("/chat/{chatId}/send")
-    public String sendMessage(@PathVariable Long chatId, @RequestParam String content) {
-        chatService.sendMessage(chatId, content);
+    public String sendMessage(@PathVariable Long chatId, @RequestParam String content, Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        chatService.sendMessage(chatId, user, content);
         return "redirect:/chat/" + chatId;
     }
 
     /**
-     * Edit an AI message content.
+     * Edit an AI message content for the authenticated user.
      * POST /message/{messageId}/edit
      * Form parameter: newContent (the updated message content)
      *
@@ -117,15 +148,17 @@ public class ChatController {
     }
 
     /**
-     * Delete a chat.
+     * Delete a chat for the authenticated user.
      * POST /chat/{chatId}/delete
      *
      * @param chatId the ID of the chat to delete
+     * @param authentication the authenticated user
      * @return redirect to home page
      */
     @PostMapping("/chat/{chatId}/delete")
-    public String deleteChat(@PathVariable Long chatId) {
-        chatService.deleteChat(chatId);
+    public String deleteChat(@PathVariable Long chatId, Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        chatService.deleteChat(chatId, user);
         return "redirect:/";
     }
 

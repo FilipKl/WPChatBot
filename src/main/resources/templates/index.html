@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -132,8 +133,6 @@
         .btn-create:active { transform: scale(0.97); }
 
         /* ── Chats list ──────────────────────────── */
-        .chats-section { }
-
         .chats-list {
             display: flex;
             flex-direction: column;
@@ -224,6 +223,64 @@
         .empty-state-icon { font-size: 2rem; margin-bottom: 12px; }
         .empty-state p    { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 4px; }
         .empty-state small{ font-size: 0.82rem; }
+
+        /* ── Header actions ──────────────────────── */
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-username {
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            font-family: 'IBM Plex Mono', monospace;
+            padding: 5px 10px;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+
+        .btn-logout {
+            padding: 7px 14px;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-logout:hover {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red);
+        }
+
+        .btn-login {
+            padding: 7px 14px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-login:hover {
+            background: var(--accent);
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -232,7 +289,20 @@
         <div class="header-icon">🤖</div>
         <div class="header-text">
             <h1>ChatBot</h1>
+        </div>
 
+        <div class="header-actions">
+            <!-- Logged in: show username chip + logout button -->
+            <span sec:authorize="isAuthenticated()"
+                  th:text="${#authentication.name}"
+                  class="header-username">
+</span>
+            <form sec:authorize="isAuthenticated()" method="POST" action="/logout" style="display:inline;">
+                <button type="submit" class="btn-logout">Logout</button>
+            </form>
+
+            <!-- Not logged in: show login button -->
+            <a sec:authorize="!isAuthenticated()" href="/login" class="btn-login">Login</a>
         </div>
     </div>
 
