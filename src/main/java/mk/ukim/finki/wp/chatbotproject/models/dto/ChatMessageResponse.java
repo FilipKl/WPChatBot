@@ -7,10 +7,7 @@ import mk.ukim.finki.wp.chatbotproject.models.Role;
 
 import java.time.LocalDateTime;
 
-/**
- * DTO for outgoing WebSocket chat message to client.
- * Contains message details to be displayed in real-time.
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -13,10 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Implementation of ChatService.
- * Orchestrates the conversation flow between user and AI.
- */
 @Service
 public class ChatServiceImpl implements ChatService {
 
@@ -56,23 +52,15 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public Chat sendMessage(Long chatId, User user, String userInput) {
-        // Step 1: Fetch chat and save user message (in transaction)
         Chat chat = saveChatUserMessage(chatId, user, userInput);
 
-        // Step 2: Generate AI response
         String aiResponse = llmService.generateResponse(messageService.getMessagesByChat(chatId));
 
-        // Step 3: Save AI response (in new transaction)
         messageService.saveMessage(chat, Role.AI, aiResponse);
 
-        // Return the updated chat
         return getChatById(chatId, user);
     }
 
-    /**
-     * Save user message in a transaction. Separated from sendMessage to avoid
-     * holding database connection during long LLM call.
-     */
     @Transactional
     private Chat saveChatUserMessage(Long chatId, User user, String userInput) {
         Chat chat = getChatById(chatId, user);

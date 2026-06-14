@@ -14,10 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.Collections;
 
-/**
- * Implementation of UserService and UserDetailsService.
- * Handles user registration, authentication, and Spring Security integration.
- */
+
 @Service
 public class UserServiceImpl implements UserService, UserDetailsService {
 
@@ -57,14 +54,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return userRepository.findByUsername(username).isPresent();
     }
 
-    /**
-     * Load user by username for Spring Security authentication.
-     * Called by Spring Security during login.
-     *
-     * @param username the username to load
-     * @return UserDetails object for authentication
-     * @throws UsernameNotFoundException if user not found
-     */
+
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -74,9 +64,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return new UserDetailsImpl(user);
     }
 
-    /**
-     * Inner class implementing Spring Security's UserDetails interface.
-     */
+
     public static class UserDetailsImpl implements UserDetails {
         private final User user;
 

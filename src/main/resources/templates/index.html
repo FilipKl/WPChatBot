@@ -292,7 +292,6 @@
         </div>
 
         <div class="header-actions">
-            <!-- Logged in: show username chip + logout button -->
             <span sec:authorize="isAuthenticated()"
                   th:text="${#authentication.name}"
                   class="header-username">
@@ -301,13 +300,11 @@
                 <button type="submit" class="btn-logout">Logout</button>
             </form>
 
-            <!-- Not logged in: show login button -->
             <a sec:authorize="!isAuthenticated()" href="/login" class="btn-login">Login</a>
         </div>
     </div>
 
     <div class="content">
-        <!-- Create new chat -->
         <div class="create-section">
             <div class="section-label">New conversation</div>
             <form method="POST" action="/chat/create" class="form-row">
@@ -316,7 +313,6 @@
             </form>
         </div>
 
-        <!-- Chat list -->
         <div class="chats-section">
             <div class="section-label">Your chats</div>
 

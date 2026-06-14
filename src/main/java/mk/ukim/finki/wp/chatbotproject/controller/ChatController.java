@@ -14,11 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Controller for chat-related HTTP requests.
- * Handles chat creation, viewing, message sending, and message editing.
- * All business logic is delegated to ChatService and MessageService.
- */
 @Controller
 @RequestMapping
 public class ChatController {
@@ -31,12 +26,7 @@ public class ChatController {
         this.messageService = messageService;
     }
 
-    /**
-     * Extract authenticated user from the security context.
-     *
-     * @param authentication the Authentication object from Spring Security
-     * @return the User entity
-     */
+
     private User getAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new IllegalArgumentException("User is not authenticated");
@@ -45,14 +35,6 @@ public class ChatController {
         return userDetails.getUser();
     }
 
-    /**
-     * List all chats for the authenticated user, or show empty list if not authenticated.
-     * GET /
-     *
-     * @param model the model to pass data to the view
-     * @param authentication the authenticated user (may be null if not logged in)
-     * @return the index view name
-     */
     @GetMapping("/")
     public String listAllChats(Model model, Authentication authentication) {
         List<Chat> chats = new ArrayList<>();
@@ -66,15 +48,6 @@ public class ChatController {
         return "index";
     }
 
-    /**
-     * Create a new chat for the authenticated user.
-     * POST /chat/create
-     * Form parameter: title
-     *
-     * @param title the title of the new chat
-     * @param authentication the authenticated user
-     * @return redirect to the newly created chat
-     */
     @PostMapping("/chat/create")
     public String createChat(@RequestParam String title, Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
@@ -82,15 +55,6 @@ public class ChatController {
         return "redirect:/chat/" + newChat.getId();
     }
 
-    /**
-     * Open a specific chat and display its messages for the authenticated user.
-     * GET /chat/{chatId}
-     *
-     * @param chatId the ID of the chat to open
-     * @param model the model to pass data to the view
-     * @param authentication the authenticated user
-     * @return the chat view name
-     */
     @GetMapping("/chat/{chatId}")
     public String openChat(@PathVariable Long chatId, Model model, Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
@@ -103,21 +67,6 @@ public class ChatController {
         return "chat";
     }
 
-    /**
-     * Send a user message and trigger AI response generation for the authenticated user.
-     * POST /chat/{chatId}/send
-     * Form parameter: content (the message content)
-     *
-     * Internally delegates to ChatService.sendMessage() which:
-     * 1. Saves the USER message
-     * 2. Calls LLMService to generate AI response with full context
-     * 3. Saves the AI response
-     *
-     * @param chatId the ID of the chat
-     * @param content the message content from the user
-     * @param authentication the authenticated user
-     * @return redirect to the chat page
-     */
     @PostMapping("/chat/{chatId}/send")
     public String sendMessage(@PathVariable Long chatId, @RequestParam String content, Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
@@ -125,18 +74,7 @@ public class ChatController {
         return "redirect:/chat/" + chatId;
     }
 
-    /**
-     * Edit an AI message content for the authenticated user.
-     * POST /message/{messageId}/edit
-     * Form parameter: newContent (the updated message content)
-     *
-     * The MessageService enforces the rule that only AI messages can be edited.
-     * USER messages will throw an exception if attempted to be edited.
-     *
-     * @param messageId the ID of the message to edit
-     * @param newContent the new content for the message
-     * @return redirect to the chat page containing this message
-     */
+
     @PostMapping("/message/{messageId}/edit")
     public String editMessage(@PathVariable Long messageId, @RequestParam String newContent) {
         Message message = messageService.getMessageById(messageId);
@@ -147,14 +85,7 @@ public class ChatController {
         return "redirect:/chat/" + chatId;
     }
 
-    /**
-     * Delete a chat for the authenticated user.
-     * POST /chat/{chatId}/delete
-     *
-     * @param chatId the ID of the chat to delete
-     * @param authentication the authenticated user
-     * @return redirect to home page
-     */
+
     @PostMapping("/chat/{chatId}/delete")
     public String deleteChat(@PathVariable Long chatId, Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
@@ -162,14 +93,6 @@ public class ChatController {
         return "redirect:/";
     }
 
-    /**
-     * Exception handler for IllegalArgumentException.
-     * Handles cases where chat or message is not found, or business rules are violated.
-     *
-     * @param ex the exception
-     * @param model the model to pass error information to the view
-     * @return the error view name
-     */
     @ExceptionHandler(IllegalArgumentException.class)
     public String handleIllegalArgument(IllegalArgumentException ex, Model model) {
         model.addAttribute("error", ex.getMessage());

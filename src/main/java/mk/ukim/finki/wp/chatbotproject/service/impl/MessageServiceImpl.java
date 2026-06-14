@@ -11,10 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Implementation of MessageService.
- * Handles message creation, retrieval, and editing with proper business rules.
- */
 @Service
 @Transactional
 public class MessageServiceImpl implements MessageService {
@@ -51,12 +47,10 @@ public class MessageServiceImpl implements MessageService {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new IllegalArgumentException("Message not found with ID: " + messageId));
 
-        // USER messages cannot be edited
         if (message.getRole() == Role.USER) {
             throw new IllegalArgumentException("USER messages cannot be edited after saving");
         }
 
-        // Only AI messages can be edited
         message.setContent(newContent);
 
         return messageRepository.save(message);

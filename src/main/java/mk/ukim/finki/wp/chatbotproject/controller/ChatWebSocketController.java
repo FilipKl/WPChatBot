@@ -13,11 +13,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
-/**
- * WebSocket controller for real-time chat messages.
- * Handles incoming WebSocket messages and broadcasts responses.
- * Only authenticated users can send messages.
- */
+
 @Controller
 public class ChatWebSocketController {
 
@@ -29,12 +25,6 @@ public class ChatWebSocketController {
         this.messageService = messageService;
     }
 
-    /**
-     * Extract authenticated user from the security context.
-     *
-     * @param authentication the Authentication object from Spring Security
-     * @return the User entity
-     */
     private User getAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new IllegalArgumentException("User is not authenticated");
@@ -43,21 +33,7 @@ public class ChatWebSocketController {
         return userDetails.getUser();
     }
 
-    /**
-     * Handle incoming chat messages via WebSocket.
-     * Processes user message and generates AI response in real-time.
-     *
-     * Message flow:
-     * 1. Client sends to /app/chat/{chatId}/send
-     * 2. Spring routes to this method with @MessageMapping
-     * 3. Method processes and broadcasts to /topic/chat/{chatId}
-     * 4. All connected clients receive the response
-     *
-     * @param chatId the ID of the chat
-     * @param request the incoming message request
-     * @param authentication the authenticated user
-     * @return the chat message response (sent to all subscribers)
-     */
+
     @MessageMapping("/chat/{chatId}/send")
     @SendTo("/topic/chat/{chatId}")
     public ChatMessageResponse handleChatMessage(
@@ -66,21 +42,16 @@ public class ChatWebSocketController {
             Authentication authentication) {
 
         try {
-            // Validate the request
             if (request.getContent() == null || request.getContent().trim().isEmpty()) {
                 throw new IllegalArgumentException("Message content cannot be empty");
             }
 
-            // Get authenticated user
             User user = getAuthenticatedUser(authentication);
 
-            // Send the message through ChatService (saves user message and generates AI response)
             chatService.sendMessage(chatId, user, request.getContent());
 
-            // Get the last AI response message
             Message aiMessage = messageService.getLastAIMessageByChat(chatId);
 
-            // Convert to response DTO
             return convertMessageToResponse(aiMessage);
 
         } catch (Exception e) {
@@ -94,12 +65,6 @@ public class ChatWebSocketController {
         }
     }
 
-    /**
-     * Convert Message entity to ChatMessageResponse DTO.
-     *
-     * @param message the message entity
-     * @return the response DTO
-     */
     private ChatMessageResponse convertMessageToResponse(Message message) {
         return new ChatMessageResponse(
                 message.getId(),
