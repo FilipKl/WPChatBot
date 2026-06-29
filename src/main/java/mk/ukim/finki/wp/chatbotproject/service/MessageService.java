@@ -6,6 +6,7 @@ import mk.ukim.finki.wp.chatbotproject.models.Role;
 
 import java.util.List;
 
+
 public interface MessageService {
 
     Message saveMessage(Chat chat, Role role, String content);

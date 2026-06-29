@@ -5,11 +5,14 @@ import mk.ukim.finki.wp.chatbotproject.models.Message;
 import mk.ukim.finki.wp.chatbotproject.models.Role;
 import mk.ukim.finki.wp.chatbotproject.repository.ChatRepository;
 import mk.ukim.finki.wp.chatbotproject.repository.MessageRepository;
+import mk.ukim.finki.wp.chatbotproject.service.KnowledgeTools;
 import mk.ukim.finki.wp.chatbotproject.service.MessageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+
 
 @Service
 @Transactional
@@ -17,10 +20,12 @@ public class MessageServiceImpl implements MessageService {
 
     private final MessageRepository messageRepository;
     private final ChatRepository chatRepository;
+    private final KnowledgeTools knowledgeTools;
 
-    public MessageServiceImpl(MessageRepository messageRepository, ChatRepository chatRepository) {
+    public MessageServiceImpl(MessageRepository messageRepository, ChatRepository chatRepository, KnowledgeTools knowledgeTools) {
         this.messageRepository = messageRepository;
         this.chatRepository = chatRepository;
+        this.knowledgeTools = knowledgeTools;
     }
 
     @Override
@@ -52,8 +57,18 @@ public class MessageServiceImpl implements MessageService {
         }
 
         message.setContent(newContent);
+        Message savedMessage = messageRepository.save(message);
 
-        return messageRepository.save(message);
+        Chat chat = message.getChat();
+        Optional<Message> precedingUserMessage = messageRepository.findMostRecentUserMessageBefore(
+                chat, Role.USER, message.getTimestamp()
+        );
+
+        if (precedingUserMessage.isPresent()) {
+            knowledgeTools.saveKnowledge(precedingUserMessage.get().getContent(), newContent);
+        }
+
+        return savedMessage;
     }
 
     @Override

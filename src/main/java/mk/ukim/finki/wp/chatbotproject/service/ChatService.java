@@ -5,9 +5,7 @@ import mk.ukim.finki.wp.chatbotproject.models.User;
 
 import java.util.List;
 
-
 public interface ChatService {
-
     Chat createChat(String title, User user);
 
     Chat getChatById(Long id, User user);

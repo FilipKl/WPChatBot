@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.Collections;
 
-
 @Service
 public class UserServiceImpl implements UserService, UserDetailsService {
 
@@ -63,7 +62,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         return new UserDetailsImpl(user);
     }
-
 
     public static class UserDetailsImpl implements UserDetails {
         private final User user;
